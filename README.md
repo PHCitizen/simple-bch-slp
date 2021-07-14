@@ -49,7 +49,9 @@ npm install simple-bch-slp
 -   [toWIF](#toWIF)
 
 <a name="initializing" />
-#### initializing
+
+#### Initializing
+
 Arguments
 - grpcUrl: string *Default:* 
   - method grpc : bchd.fountainhead.cash:443
@@ -72,16 +74,20 @@ async function main() {
 main();
 ```
 
-### NOTE
+### Wallet
+#### NOTE
 
 -   the network depends on what you select in initialize section
 -   the if block is required
 
 <a name="wallet-new" />
+
 #### Create new wallet
+
 -- you cannot use this to create transaction after you create you need to import it first 😅
+
 Arguments
-- derivation path: string *Default:* m/44'/0'/0'/0/0
+  - derivation path: string *Default:* m/44'/0'/0'/0/0
 
 ```typescript
 const wallet1 = await Testnet.create("m/44'/245'/0'/0/0");
@@ -98,7 +104,9 @@ console.log(wallet1);
 ```
 
 <a name="wallet-wif" />
+
 #### Import from wif
+
 Arguments
 - wif: string required
 
@@ -112,7 +120,9 @@ console.log(wallet1.Address.toCash());
 ```
 
 <a name="wallet-seed" />
+
 #### Import from Seed phrases
+
 Arguments
 - seed: string required
 - derivation path : string *Default* m/44’/0’/0’/0/0
@@ -127,9 +137,9 @@ console.log(wallet1.Address.toCash());
 // bchtest:qqutew4e5l9gpxrckxn7g64xst0cv7m6yss23j5t6a
 ```
 
-###Address
+### Address
 
--   #####_Note_: you need to use the variable from the import wif / seed
+-   ##### _Note_: you need to use the variable from the import wif / seed
     <a name="address-bch" />
 -   ##### Arguments
     -- qrcode: boolean _Default_ false
@@ -142,13 +152,17 @@ console.log(wallet1.Address.toCash());
 ```
 
 <a name="address-slp" />
+
  - #### To SLP Address
 ```typescript
 console.log(wallet1.Address.toSlp());
 // slptest:qqutew4e5l9gpxrckxn7g64xst0cv7m6yst7kfwugq
 ```
+
 <a name="address-legacy" />
+
  - #### To Legacy Address
+
 ```typescript
 console.log(wallet1.Address.toLegacy());
 // mkgxDwkaJusXTvadSD4iieXnX3P9JQtYyv
@@ -157,30 +171,41 @@ console.log(wallet1.Address.toLegacy());
 ### BCH
 
 <a name="bch-balance" />
+
 - #### balance
- - Argument: 
--- format: string: "satoshi" | "bch" | "bits" *Default* satoshi
- - ```typescript
+
+  - Argument: 
+    -- format: string: "satoshi" | "bch" | "bits" *Default* satoshi
+```typescript
 console.log(await wallet1.BCH.balance("bch"));
 // 0.0001
 ```
+
 <a name="bch-max" />
+
 - #### max amount to send
- - Argument: 
--- format: string: "satoshi" | "bch" | "bits" *Default* satoshi
- - ```typescript
+
+  - Argument: 
+    -- format: string: "satoshi" | "bch" | "bits" *Default* satoshi
+```typescript
 console.log(await wallet1.BCH.maxAmount("bch"));
 // 0.0001	
 ```
 
 <a name="bch-send" />
+
 - #### send
- - Argument: 
--- address: string: required
--- amount: number: required - in bch form, minimum 0.00000546 bch
--- get fee: boolean : *Default* false
- - ```typescript
-console.log(
+
+  - Argument: 
+
+    -- address: string: required
+
+    -- amount: number: required - in bch form, minimum 0.00000546 bch
+    
+    -- get fee: boolean : *Default* false
+    
+```typescript
+    console.log(
         await wallet1.BCH.send(
             "bchtest:qqqg3m66m5s2zvvwk6y4tsuh0phta8qtrcv8se9uqk",
             546
@@ -194,11 +219,16 @@ console.log(
 ```
 
 <a name="bch-sendall" />
+
 - #### Send All
- - Argument: 
--- address: string: required
--- get fee: boolean : *Default* false
- - ```typescript
+
+  - Argument: 
+ 
+    -- address: string: required
+    
+    -- get fee: boolean : *Default* false
+    
+```typescript
 console.log(
         await wallet1.BCH.sendAll(
             "bchtest:qqqg3m66m5s2zvvwk6y4tsuh0phta8qtrcv8se9uqk"
@@ -214,10 +244,14 @@ console.log(
 ### SLP
 
 <a name="slp-balance" />
+
 - #### Balance
- - Argument: 
--- tokenId: string[] | "all": default "all"
- - ```typescript
+
+  - Argument: 
+
+    -- tokenId: string[] | "all": default "all"
+    
+```typescript
 console.log(await wallet1.SLP.balance());
 // [
     //     {
@@ -231,18 +265,30 @@ console.log(await wallet1.SLP.balance());
     //     }
     // ]
 ```
+
 <a name="slp-pgen" />
+
 - #### Parent Genesis
- - Argument: {
+  
+  - Argument: {
+
 	 -- symbol: string: required
+	 
 	 -- name: string: required
+	 
 	 -- documentUri: string: required
+	 
 	 -- documentHash: string: required
+	 
 	 -- amount: number: required,,
+	 
 	 -- getFee: boolean: *Default* false
+	 
 	 -- fixedSupply: boolean *Default* false
-} 
- - ```typescript
+
+}
+
+```typescript
   console.log(
         await wallet1.SLP.parentGenesis({
             symbol: "SBS",
@@ -260,18 +306,28 @@ console.log(await wallet1.SLP.balance());
 ```
 
 <a name="slp-cgen" />
+
 - #### Child Genesis
- - Argument: {
+  - Argument: {
+
 	 -- parentTokenId: string: required
+	 
 	 -- name: string: required
+	 
 	 -- symbol: string: required
+	 
 	 -- documentUri: string: required
+	 
 	 -- documentHash: string: required
+	 
 	 -- getFee: boolean *Default* false
-	 -- autoSplit: boolean *Default* false,
+	 
+	 -- autoSplit: boolean *Default* false
+	 
 } 
- - ```typescript
-console.log(
+
+```typescript
+    console.log(
         await wallet1.SLP.childGenesis({
             parentTokenId:
                 "21ff93cf20d57579db47bb6598ff38732f495e0cbae51b016a5cb4f58e21fb29",
@@ -297,13 +353,18 @@ console.log(
 ```
 
 <a name="slp-addsupply" />
+
 - #### Add Supply
- - **NOTE**: you can only use this if mint baton is in your address
- - Argument: 
+  - **NOTE**: you can only use this if mint baton is in your address
+  - Argument: 
+   
 	 -- parentTokenId: string: required
+	 
 	 -- amount: number: required
+	 
 	 -- getFee: boolean *Default* false
- - ```typescript
+	 
+```typescript
 console.log(
         await wallet1.SLP.addSupply(
             "21ff93cf20d57579db47bb6598ff38732f495e0cbae51b016a5cb4f58e21fb29",
@@ -318,15 +379,21 @@ console.log(
 ```
 
 <a name="slp-destroy-supply" />
+
 - #### Destroy Supply
- - **NOTE** : split utxo tx will add to result if you dont have splited utxo.
+   - **NOTE** : split utxo tx will add to result if you dont have splited utxo.
  i add 1000 supply before so i have splited already. thats why the response are the burnTx only
- - Argument: 
+ 
+   - Argument: 
+   
 	 -- tokenId: string: required
+	 
 	 -- amount: number | "all": required
+	 
 	 -- getFee: boolean *Default* false
- - ```typescript
-console.log(
+	 
+```typescript
+    console.log(
         await wallet1.SLP.burnGroup(
             "21ff93cf20d57579db47bb6598ff38732f495e0cbae51b016a5cb4f58e21fb29",
             1000
@@ -342,12 +409,14 @@ console.log(
 ```
 
 <a name="slp-destroy-baton" />
+
 - #### Destroy Mint Baton
- - if you destroy mint baton you will not able to add supply
- - Argument: 
+   - if you destroy mint baton you will not able to add supply
+   - Argument: 
+   
 	 -- tokenId: string: required
 
--   ```typescript
+```typescript
     console.log(
         await wallet1.SLP.destroyMintBaton(
             "21ff93cf20d57579db47bb6598ff38732f495e0cbae51b016a5cb4f58e21fb29"
@@ -358,17 +427,17 @@ console.log(
     //     txid: '815250543e9214be7e6266e1ecde88b096929814daf4252c6d0d30a7aca62352',
     //     message: ''
     // }
-    ```
-
-````
+```
 
 <a name="slp-split" />
+
 - #### Split Utxos
- - this function is called in destroy supply the splitTx one
- - Argument:
+  - this function is called in destroy supply the splitTx one
+  - Argument:
+  
 	 -- tokenId: string: required
 
- - ```typescript
+```typescript
 console.log(
         await wallet1.SLP.splitUtxo(
             "21ff93cf20d57579db47bb6598ff38732f495e0cbae51b016a5cb4f58e21fb29",
@@ -383,14 +452,20 @@ console.log(
 ````
 
 <a name="slp-send" />
+
 - #### Send
- - Argument: 
+  - Argument: 
+  
 	 -- address: string: required: the simpleledger:...  address
+	 
 	 -- tokenId: string: required
+	 
 	 -- amount: number: *Default* 1
+	 
 	 -- getFee: boolean: *Default* false
- - ```typescript
- console.log(
+	 
+```typescript
+    console.log(
         await wallet1.SLP.send(
             "slptest:qqqg3m66m5s2zvvwk6y4tsuh0phta8qtrchnhzltjt",
             "21ff93cf20d57579db47bb6598ff38732f495e0cbae51b016a5cb4f58e21fb29",
@@ -405,6 +480,7 @@ console.log(
 ```
 
 <a name="toWIF" />
+
 - #### To WIF
 ```typescript
     console.log(await wallet1.toWIF());
