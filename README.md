@@ -498,3 +498,7 @@ copy paste 😆
 ## License
 
 [MIT](https://choosealicense.com/licenses/mit/)
+
+## Donations😄
+[![bch.md.jpg](https://add.pics/images/2021/07/14/bch.md.jpg)](https://add.pics/image/EL6AH)
+bitcoincash:qryphmuqxjlfjna4cv45rddmf8sn6qm6kylrsh8955
