@@ -1,0 +1,34 @@
+{
+    "name": "simple-bch-slp",
+    "version": "1.0.0",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "license": "MIT",
+    "description": "Simple SLP is a package written in nodejs to deal with bitcoin-cash slp and bch transaction",
+    "repository": "https://github.com/PHCitizen/simple-bch-slp.git",
+    "author": "PHCitizen <embogjayvee@gmail.com>",
+    "private": false,
+    "scripts": {
+        "build": "tsc",
+        "start": "node ./dist/app.js",
+        "dev": "tsc && node ./dist/app.js"
+    },
+    "dependencies": {
+        "@bitcoin-dot-com/bitcoincashjs2-lib": "^4.1.0",
+        "@types/bitcore-lib-cash": "^8.23.3",
+        "@types/node": "^15.12.4",
+        "bchaddrjs-slp": "^0.2.14",
+        "bip39": "^3.0.4",
+        "bitcore-lib-cash": "^8.25.10",
+        "coininfo": "^5.1.0",
+        "grpc-bchrpc-node": "^0.15.2",
+        "node-fetch": "^2.6.1",
+        "qrcode": "^1.4.4",
+        "randombytes": "^2.1.0",
+        "reflect-metadata": "^0.1.13",
+        "slp-mdm": "^0.0.7",
+        "typescript": "^4.3.4",
+        "typescript-mixin": "^1.0.3"
+    },
+    "devDependencies": {}
+}
