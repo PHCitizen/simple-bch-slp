@@ -1,15 +1,42 @@
 import * as Bitcore from "bitcore-lib-cash";
 import * as Interface from "./interface";
 import * as slpMdm from "slp-mdm";
+import { Helper } from "./Helper";
 const fetch = require("node-fetch");
 
 export default class SLP {
-    protected privKey: any;
-    protected data: Interface.URLs;
-    protected address: any;
-    protected _Helper: any;
-    constructor(data: Interface.URLs) {
+    constructor(
+        protected privKey: Bitcore.PrivateKey,
+        protected data: Interface.URLs,
+        protected address: Bitcore.Address,
+        protected _Helper: Helper
+    ) {
+        this.privKey = privKey;
         this.data = data;
+        this.address = address;
+        this._Helper = _Helper;
+    }
+    private mergeUtxoWithSameInfo(utxos: Interface.Utxo[]) {
+        const data: Interface.Utxo[] = [];
+        const filtered = utxos
+            .filter((v) => v.slp)
+            .sort(function (a, b) {
+                return b.slp.amount - a.slp.amount;
+            });
+        for (const a of filtered) {
+            let i = 0;
+            let status = true;
+            for (const v of data) {
+                if (a.slp.tokenId == v.slp.tokenId) {
+                    status = false;
+                    data[i].slp.amount += a.slp.amount;
+                    break;
+                }
+                i += 1;
+            }
+            if (status) data.push(a);
+        }
+        return data;
     }
     get SLP() {
         const self = this;
@@ -22,31 +49,11 @@ export default class SLP {
                 if ("error" in utxos) return utxos;
                 if (utxos.length == 0) return [];
                 if (tokenIdSelected == "all") {
-                    utxos = utxos
-                        .filter((v) => v.slp)
-                        .filter((v) => {
-                            if (v.slp.tokenType == 65) return v;
-                            if (v.slp.isMintBaton == true) return v;
-                            if (v.slp.amount > 1) return v;
-                            return;
-                        })
-                        .sort(function (a, b) {
-                            return b.slp.amount - a.slp.amount;
-                        });
+                    utxos = self.mergeUtxoWithSameInfo(utxos);
                 } else {
-                    utxos = utxos
-                        .filter((v) => v.slp)
-                        .sort(function (a, b) {
-                            return b.slp.amount - a.slp.amount;
-                        })
-                        .filter((v) => tokenIdSelected.includes(v.slp.tokenId))
-                        .filter((v) => {
-                            // we dont want to return splited utxo
-                            if (v.slp.tokenType == 65) return v;
-                            if (v.slp.isMintBaton == true) return v;
-                            if (v.slp.amount > 1) return v;
-                            return;
-                        });
+                    utxos = self
+                        .mergeUtxoWithSameInfo(utxos)
+                        .filter((v) => tokenIdSelected.includes(v.slp.tokenId));
                 }
                 const token = utxos.map((v) => {
                     return { id: v.slp.tokenId, amount: v.slp.amount };
@@ -58,7 +65,6 @@ export default class SLP {
                         })
                     ),
                 ];
-
                 const tokenJoined = tokenId.join("|");
                 const schema = `{"v": 3,"q": {"db": ["g"],"find":{"tokenDetails.tokenIdHex": { "$regex": "${tokenJoined}", "$options": "i" },"graphTxn.details.transactionType": "GENESIS"},"project": {"_id": 0,"id": "$tokenDetails.tokenIdHex","parentTokenId": "$tokenDetails.nftGroupIdHex","name": "$graphTxn.details.name","symbol": "$graphTxn.details.symbol","documentUri": "$graphTxn.details.documentUri","documentHash": "$graphTxn.details.documentSha256Hex"}}}`;
                 const base64Data = Buffer.from(schema).toString("base64");
@@ -68,11 +74,10 @@ export default class SLP {
                 } catch (e) {
                     return { error: true, message: (e as Error).message };
                 }
-                const json = await res.json();
-                const data = json.g;
+                const json = (await res.json()).g;
                 const datas: Interface.NftDetails[] = [];
                 token.forEach((a) => {
-                    const nftDetails = data.filter((v: Interface.dbData) => {
+                    const nftDetails = json.filter((v: Interface.dbData) => {
                         return v.id == a.id;
                     })[0];
 
@@ -93,8 +98,8 @@ export default class SLP {
             send: async function (
                 toAddress: string,
                 tokenIdToSend: string,
-                amount: number = 1,
-                getFee: boolean = false
+                amount = 1,
+                getFee = false
             ): Promise<number | Interface.Error | Interface.tx> {
                 const valid = self._Helper.validate.slpMainnet(toAddress);
                 if (valid.error) return valid;
@@ -106,19 +111,15 @@ export default class SLP {
                 const utxosBCH = utxos.filter((v) => !v.slp);
                 const balance = utxosBCH.reduce((a, v) => a + v.value, 0);
 
-                let sendParent: boolean = false;
                 const utxosSLP = utxos
                     .filter((v) => v.slp)
                     .sort(function (a, b) {
                         return b.slp.amount - a.slp.amount;
                     })
                     .filter((v) => {
-                        return (
-                            v.slp.tokenId == tokenIdToSend &&
-                            v.slp.address.toString() === self.address.toString()
-                        );
+                        return v.slp.tokenId == tokenIdToSend;
                     });
-                if (utxosSLP === undefined || utxosSLP.length == 0)
+                if (utxosSLP.length == 0)
                     return {
                         error: true,
                         message:
@@ -137,11 +138,12 @@ export default class SLP {
                         error: true,
                         message: "insufficient token balace",
                     };
+
+                let sendParent = false;
                 if (utxosSLP[0].slp.tokenType == 129) sendParent = true;
                 const changeToken = groupUtxosAmount - amount;
                 const sendToAddr = self._Helper.Address.toCash(toAddress);
                 let script: Bitcore.Script;
-                console.log(sendParent);
                 if (sendParent == true) {
                     const slpOutput = [new slpMdm.BN(amount.toString())];
                     if (changeToken > 0)
@@ -157,15 +159,13 @@ export default class SLP {
                         ])
                     );
                 }
-                const inputUtxos = [];
+                const inputUtxos = utxosSlpToSend.map((v) =>
+                    Utxo.utxoToUnspentOutput(v)
+                );
                 for (const utxo of utxosBCH) {
                     inputUtxos.push(Utxo.utxoToUnspentOutput(utxo));
-                    if (inputUtxos.reduce((a, v) => a + v.satoshis, 0) > 5000) {
+                    if (inputUtxos.reduce((a, v) => a + v.satoshis, 0) > 5000)
                         break;
-                    }
-                }
-                for (const utxo of utxosSlpToSend) {
-                    inputUtxos.push(Utxo.utxoToUnspentOutput(utxo));
                 }
 
                 let tx = new Bitcore.Transaction()
@@ -251,8 +251,8 @@ export default class SLP {
                     self.address.toString()
                 );
                 if ("error" in utxos) return utxos;
-                const mintBaton = self.hasTokenId(utxos, 129, true, tokenId);
-                if (mintBaton === undefined || mintBaton.length == 0)
+                const mintBaton = self.hasTokenInfo(utxos, 129, true, tokenId);
+                if (mintBaton.length == 0)
                     return {
                         error: true,
                         message: "mint baton tokenId not found",
@@ -264,9 +264,8 @@ export default class SLP {
                 for (const utxo of utxosBCH) {
                     inputUtxos.push(Utxo.utxoToUnspentOutput(utxo));
 
-                    if (inputUtxos.reduce((a, v) => a + v.satoshis, 0) > 3000) {
+                    if (inputUtxos.reduce((a, v) => a + v.satoshis, 0) > 3000)
                         break;
-                    }
                 }
                 let tx = new Bitcore.Transaction()
                     .from(inputUtxos)
@@ -281,7 +280,7 @@ export default class SLP {
             addSupply: async function (
                 tokenId: string,
                 amount: number,
-                getFee: boolean = false
+                getFee = false
             ): Promise<Interface.Error | Interface.tx | number> {
                 const utxos = await Utxo.getAddressUtxos(
                     self.address.toString()
@@ -290,8 +289,8 @@ export default class SLP {
                 const utxosBCH = utxos.filter((v) => !v.slp);
                 const balance = utxosBCH.reduce((a, v) => a + v.value, 0);
 
-                const batonUtxos = self.hasTokenId(utxos, 129, true, tokenId);
-                if (batonUtxos === undefined || batonUtxos.length == 0) {
+                const batonUtxos = self.hasTokenInfo(utxos, 129, true, tokenId);
+                if (batonUtxos.length == 0) {
                     return {
                         error: true,
                         message: `${tokenId} mint baton not found`,
@@ -302,9 +301,8 @@ export default class SLP {
                 for (const utxo of utxosBCH) {
                     inputUtxos.push(Utxo.utxoToUnspentOutput(utxo));
 
-                    if (inputUtxos.reduce((a, v) => a + v.satoshis, 0) > 5000) {
+                    if (inputUtxos.reduce((a, v) => a + v.satoshis, 0) > 5000)
                         break;
-                    }
                 }
 
                 let tx = self._Helper.mintAdditional(
@@ -323,49 +321,50 @@ export default class SLP {
             burnGroup: async function (
                 tokenId: string,
                 amount: number | "all",
-                getFee: boolean = false
-            ): Promise<
-                | Interface.Error
-                | {
-                      splitTx: Interface.tx | number;
-                      burnTx: Interface.tx | number;
-                  }
-                | { burnTx: Interface.tx | number }
-            > {
+                getFee = false
+            ): Promise<Interface.Error | Interface.tx | number> {
                 let utxos = await Utxo.getAddressUtxos(self.address.toString());
                 if ("error" in utxos) return utxos;
-                const inputUtxosSLP: any = [];
-                let split: any;
+                let inputUtxosSLP: Bitcore.Transaction.UnspentOutput[] = [];
                 let hasSplited: Interface.Utxo[] = [];
-                if (self.hasTokenId(utxos, 129, false, tokenId).length == 0)
+                if (self.hasTokenInfo(utxos, 129, false, tokenId).length == 0)
                     return {
                         error: true,
                         message: "token not found in your address",
                     };
+                let slpOutput: slpMdm.BN[] = [];
                 if (amount == "all") {
-                    const tokenToBurn = self.hasTokenId(
+                    const tokenToBurn = self.hasTokenInfo(
                         utxos,
                         129,
                         false,
                         tokenId
                     );
-                    inputUtxosSLP.concat(
+                    let totalAmount = 0;
+                    for (const utxo of tokenToBurn) {
+                        totalAmount += utxo.slp.amount;
+                    }
+                    inputUtxosSLP = inputUtxosSLP.concat(
                         tokenToBurn.map((v) => Utxo.utxoToUnspentOutput(v))
                     );
+                    slpOutput = [new slpMdm.BN(totalAmount)];
                 } else {
-                    hasSplited = self.hasSplited(utxos, tokenId, amount);
-                    if (hasSplited.length == 0) {
-                        split = await this.splitUtxo(tokenId, amount, getFee);
-                        if (split.error == true) return split;
-                        utxos = await Utxo.getAddressUtxos(
-                            self.address.toString()
-                        );
-                        if ("error" in utxos) return utxos;
-                    }
-                    const tokenToBurn = self.hasSplited(utxos, tokenId, amount);
-                    inputUtxosSLP.push(
-                        Utxo.utxoToUnspentOutput(tokenToBurn[0])
+                    const tokenToBurn = self.hasTokenInfo(
+                        utxos,
+                        129,
+                        false,
+                        tokenId
                     );
+                    let totalAmount = 0;
+                    for (const utxo of tokenToBurn) {
+                        inputUtxosSLP.push(Utxo.utxoToUnspentOutput(utxo));
+                        totalAmount += utxo.slp.amount;
+                        if (totalAmount >= amount) break;
+                    }
+                    slpOutput = [
+                        new slpMdm.BN(totalAmount - amount),
+                        new slpMdm.BN(amount),
+                    ];
                 }
                 const utxoBCH = utxos.filter((v) => !v.slp);
                 const balance = utxoBCH.reduce((a, v) => a + v.value, 0);
@@ -382,18 +381,21 @@ export default class SLP {
                 const inputUtxo = inputUtxosSLP.concat(inputUtxosBCH);
                 const tx = new Bitcore.Transaction()
                     .from(inputUtxo)
+                    .addOutput(
+                        new Bitcore.Transaction.Output({
+                            script: Bitcore.Script.fromBuffer(
+                                slpMdm.NFT1.Group.send(tokenId, slpOutput)
+                            ),
+                            satoshis: 0,
+                        })
+                    )
+                    .to(self.address, 546)
                     .change(self.address)
-                    .feePerByte(1)
-                    .sign(self.privKey);
-                if (getFee) {
-                    if (amount == "all" || hasSplited.length != 0)
-                        return { burnTx: tx.getFee() };
-                    return { splitTx: split, burnTx: tx.getFee() };
-                }
+                    .feePerByte(1);
+                if (getFee) return tx.getFee();
+
                 const txid = await Utxo.broadcastTx(tx, true);
-                if (amount == "all" || hasSplited.length != 0)
-                    return { burnTx: txid };
-                return { splitTx: split, burnTx: txid };
+                return txid;
             },
             childGenesis: async function (data: {
                 parentTokenId: string;
@@ -403,12 +405,20 @@ export default class SLP {
                 documentHash: string;
                 autoSplit?: boolean;
                 getFee?: boolean;
-            }) {
+            }): Promise<
+                | Interface.Error
+                | number
+                | Interface.tx
+                | {
+                      splitTx: Interface.tx | number | Interface.Error;
+                      mintTx: Interface.tx;
+                  }
+            > {
                 let utxos = await Utxo.getAddressUtxos(self.address.toString());
                 if ("error" in utxos) return utxos;
                 let utxosBCH = utxos.filter((v) => !v.slp);
                 let balance = utxosBCH.reduce((a, v) => a + v.value, 0);
-                let utxosSLP = self.hasTokenId(
+                let utxosSLP = self.hasTokenInfo(
                     utxos,
                     129,
                     false,
@@ -420,9 +430,9 @@ export default class SLP {
                 let utxoToUse = utxosSLP.filter((v) =>
                     new slpMdm.BN(v.slp.amount).eq(1)
                 );
-                let split: any;
-                let doSplit: boolean = false;
-                if (utxoToUse === undefined || utxoToUse.length == 0) {
+                let split: Interface.Error | Interface.tx | number = 0;
+                let doSplit = false;
+                if (utxoToUse.length == 0) {
                     if (groupUtxo.length == 0)
                         return {
                             error: true,
@@ -434,23 +444,9 @@ export default class SLP {
                             data.parentTokenId,
                             data.getFee
                         );
-                        if (split.error == true) return split;
-                        if (data.getFee) return { splitFee: split };
-                        utxos = await Utxo.getAddressUtxos(
-                            self.address.toString()
-                        );
-                        if ("error" in utxos) return utxos;
-                        utxosBCH = utxos.filter((v) => !v.slp);
-                        balance = utxosBCH.reduce((a, v) => a + v.value, 0);
-                        utxosSLP = self.hasTokenId(
-                            utxos,
-                            129,
-                            false,
-                            data.parentTokenId
-                        );
-                        utxoToUse = utxosSLP.filter((v) =>
-                            new slpMdm.BN(v.slp.amount).eq(1)
-                        );
+                        if (typeof split == "number" || split.error == true)
+                            return split;
+                        return this.childGenesis(data);
                     } else {
                         return {
                             error: true,
@@ -485,7 +481,7 @@ export default class SLP {
                     .feePerByte(1)
                     .sign(self.privKey);
 
-                if (data.getFee) return { mintFee: tx.getFee() };
+                if (data.getFee) return tx.getFee();
                 if (balance < tx.getFee())
                     return { error: true, message: "insufficient BCH balance" };
 
@@ -493,71 +489,19 @@ export default class SLP {
                 if (doSplit) return { splitTx: split, mintTx: txid };
                 return txid;
             },
-            splitUtxo: async function (
-                tokenId: string,
-                amount: number,
-                getFee: boolean = false
-            ): Promise<Interface.Error | number | Interface.tx> {
-                const utxos = await Utxo.getAddressUtxos(
-                    self.address.toString()
-                );
-                if ("error" in utxos) return utxos;
-                const utxosBCH = utxos.filter((v) => !v.slp);
-                const balance = utxosBCH.reduce((a, v) => a + v.value, 0);
-                const groupUtxos = self
-                    .hasTokenId(utxos, 129, false, tokenId)
-                    .sort((a, b) => b.slp.amount - a.slp.amount);
-                if (groupUtxos === undefined || groupUtxos.length == 0) {
-                    return { error: true, message: `${tokenId} not found` };
-                }
-
-                const inputUtxosSLP = [];
-                let groupUtxosAmount = 0;
-                for (const utxo of groupUtxos) {
-                    inputUtxosSLP.push(Utxo.utxoToUnspentOutput(utxo));
-                    groupUtxosAmount += Number(utxo.slp.amount);
-                    if (groupUtxosAmount >= amount) break;
-                }
-                if (groupUtxosAmount < amount)
-                    return {
-                        error: true,
-                        message: "insufficient token balance",
-                    };
-                const inputUtxosBCH = [];
-                for (const utxo of utxosBCH) {
-                    inputUtxosBCH.push(Utxo.utxoToUnspentOutput(utxo));
-                    if (
-                        inputUtxosBCH.reduce((a, v) => a + v.satoshis, 0) > 5000
-                    )
-                        break;
-                }
-                const inputUtxos = inputUtxosSLP.concat(inputUtxosBCH);
-
-                let tx = self._Helper.split(
-                    inputUtxos,
-                    self.address.toString(),
-                    tokenId,
-                    groupUtxosAmount,
-                    amount
-                );
-                if (getFee) return tx.getFee();
-                if (balance < tx.getFee())
-                    return { error: true, message: "balance too small" };
-
-                tx = tx.sign(self.privKey);
-                const txid = await Utxo.broadcastTx(tx);
-                return txid;
-            },
         };
     }
-    private async splitGroupUtxo(tokenId: string, getFee: boolean = false) {
+    private async splitGroupUtxo(
+        tokenId: string,
+        getFee = false
+    ): Promise<Interface.Error | Interface.tx | number> {
         const utxos = await this.data.client.getAddressUtxos(
             this.address.toString()
         );
         if ("error" in utxos) return utxos;
         const utxosBCH = utxos.filter((v) => !v.slp);
         const balance = utxosBCH.reduce((a, v) => a + v.value, 0);
-        const groupUtxos = this.hasTokenId(utxos, 129, false, tokenId).filter(
+        const groupUtxos = this.hasTokenInfo(utxos, 129, false, tokenId).filter(
             (v) => new slpMdm.BN(v.slp.amount).gt(1)
         );
         if (groupUtxos.length == 0) {
@@ -569,7 +513,14 @@ export default class SLP {
         ];
         for (const utxo of utxosBCH) {
             inputUtxos.push(this.data.client.utxoToUnspentOutput(utxo));
-            if (inputUtxos.reduce((a, v) => a + v.satoshis, 0) > 20000) break;
+            if (
+                inputUtxos.reduce(
+                    (a: number, v: Bitcore.Transaction.UnspentOutput) =>
+                        a + v.satoshis,
+                    0
+                ) > 20000
+            )
+                break;
         }
         const slpOutputAmounts = [];
         for (let i = 0; i < groupUtxoAmount && i < 3; ++i) {
@@ -586,9 +537,7 @@ export default class SLP {
                 satoshis: 0,
             })
         );
-        for (const to in slpOutputAmounts) {
-            tx = tx.to(this.address, 546);
-        }
+        slpOutputAmounts.forEach((v) => (tx = tx.to(this.address, 546)));
 
         tx = tx.change(this.address).feePerByte(1).sign(this.privKey);
         if (getFee) return tx.getFee();
@@ -603,11 +552,11 @@ export default class SLP {
         tokenId: string,
         amount: number
     ) {
-        return this.hasTokenId(utxos, 129, false, tokenId).filter(
-            (v) => v.slp.amount === amount.toString()
+        return this.hasTokenInfo(utxos, 129, false, tokenId).filter(
+            (v) => v.slp.amount == amount
         );
     }
-    private hasTokenId(
+    private hasTokenInfo(
         utxos: Interface.Utxo[],
         type: 129 | 65,
         mintBaton: boolean,

@@ -1,4 +1,5 @@
 import * as Client from "./Utxo";
+import * as Bitcore from "bitcore-lib-cash";
 
 export interface Error {
     error: true;
@@ -10,6 +11,16 @@ export interface QrUri {
     address: string;
     amount: number;
 }
+
+export interface slp {
+    tokenId: string;
+    amount: number;
+    isMintBaton: boolean;
+    address: Bitcore.Address;
+    decimals: number;
+    slpAction: number;
+    tokenType: 129 | 65 | 1;
+}
 export interface Utxo {
     txid: string;
     vout: number;
@@ -17,7 +28,7 @@ export interface Utxo {
     pubkey_script: string;
     block_height: number;
     coinbase: boolean;
-    slp: any;
+    slp: slp;
 }
 export interface tx {
     error: boolean;
@@ -72,7 +83,7 @@ export interface Data {
     testnet?: boolean;
 }
 
-export interface URLs extends Data {
+export interface URLs {
     grpcUrl: string;
     method: "grpc" | "rest";
     slpDbUrl: string;

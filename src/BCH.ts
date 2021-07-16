@@ -1,14 +1,18 @@
 import * as Bitcore from "bitcore-lib-cash";
 import * as Interface from "./interface";
-import * as Utxo from "./Utxo";
+import { Helper } from "./Helper";
 
 export default class BCH {
-    protected privKey: any;
-    protected data: Interface.URLs;
-    protected address: any;
-    protected _Helper: any;
-    constructor(data: Interface.URLs) {
+    constructor(
+        protected privKey: Bitcore.PrivateKey,
+        protected data: Interface.URLs,
+        protected address: Bitcore.Address,
+        protected _Helper: Helper
+    ) {
+        this.privKey = privKey;
         this.data = data;
+        this.address = address;
+        this._Helper = _Helper;
     }
     get BCH() {
         const self = this;
@@ -73,10 +77,10 @@ export default class BCH {
                 if (balance < amount + getFeeNeed)
                     return {
                         error: true,
-                        message: `insufficient balance. You have ${balance} satoshi. please subtract ${getFeeNeed} satoshi as the fee`,
+                        message: `insufficient balance. You have ${balance.toString()} satoshi. please subtract ${getFeeNeed} satoshi as the fee`,
                     };
 
-                let inputUtxos = [];
+                const inputUtxos = [];
                 for (const utxo of utxosBCH) {
                     inputUtxos.push(Utxo.utxoToUnspentOutput(utxo));
                     if (
@@ -123,7 +127,7 @@ export default class BCH {
                         message: `transaction rejected! amount trying to send is very small`,
                     };
 
-                let inputUtxos = [];
+                const inputUtxos = [];
                 for (const utxo of utxosBCH) {
                     inputUtxos.push(Utxo.utxoToUnspentOutput(utxo));
                 }

@@ -8,6 +8,15 @@
     "repository": "https://github.com/PHCitizen/simple-bch-slp.git",
     "author": "PHCitizen <embogjayvee@gmail.com>",
     "private": false,
+    "keywords": [
+        "bitcoin",
+        "bitcoin cash",
+        "bch",
+        "token",
+        "slp",
+        "simpleledger",
+        "nft"
+    ],
     "scripts": {
         "build": "tsc",
         "start": "node ./dist/app.js",
@@ -21,6 +30,7 @@
         "bip39": "^3.0.4",
         "bitcore-lib-cash": "^8.25.10",
         "coininfo": "^5.1.0",
+        "fast-levenshtein": "^3.0.0",
         "grpc-bchrpc-node": "^0.15.2",
         "node-fetch": "^2.6.1",
         "qrcode": "^1.4.4",
