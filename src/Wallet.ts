@@ -4,9 +4,7 @@ import { Helper } from "./Helper";
 import BCH from "./BCH";
 import SLP from "./SLP";
 const QRCode = require("qrcode");
-import "typescript-mixin";
 
-@Mixins.tmixin(BCH, SLP)
 export class Wallet {
     protected wif: string;
     protected privKey: Bitcore.PrivateKey;
@@ -20,7 +18,7 @@ export class Wallet {
         this._Helper = new Helper(data);
         this.data = data;
     }
-    toWIF() {
+    toWIF(): string {
         return this.wif;
     }
     get Address() {
@@ -29,15 +27,15 @@ export class Wallet {
         const legacy = this._Helper.Address.toLegacy(bch);
         const self = this;
         return {
-            toCash: function (qrcode: boolean = false, amount: number = 0) {
+            toCash: function (qrcode = false, amount = 0) {
                 if (qrcode) return self._Qrcode(bch, amount);
                 return bch;
             },
-            toSlp: function (qrcode: boolean = false, amount: number = 0) {
+            toSlp: function (qrcode = false, amount = 0) {
                 if (qrcode) return self._Qrcode(slp, amount);
                 return slp;
             },
-            toLegacy: function (qrcode: boolean = false, amount: number = 0) {
+            toLegacy: function (qrcode = false, amount = 0) {
                 if (qrcode) return self._Qrcode(legacy, amount);
                 return legacy;
             },
@@ -48,7 +46,7 @@ export class Wallet {
         address: string,
         amount: number
     ): Interface.Error | Interface.QrUri {
-        var opts = {
+        const opts = {
             errorCorrectionLevel: "L",
             type: "image/jpeg",
             margin: 2,
@@ -56,7 +54,7 @@ export class Wallet {
         let text = `${address}?amount=${amount.toString()}`;
         if (amount == 0) text = address;
 
-        const generatedQR = QRCode.toDataURL("I am a pony!", opts)
+        const generatedQR = QRCode.toDataURL(text, opts)
             .then((url: string) => {
                 return { error: false, url, address, amount };
             })
@@ -68,3 +66,16 @@ export class Wallet {
     }
 }
 export interface Wallet extends BCH, SLP {}
+applyMixins(Wallet, [BCH, SLP]);
+function applyMixins(derivedCtor: any, constructors: any[]) {
+    constructors.forEach((baseCtor) => {
+        Object.getOwnPropertyNames(baseCtor.prototype).forEach((name) => {
+            Object.defineProperty(
+                derivedCtor.prototype,
+                name,
+                Object.getOwnPropertyDescriptor(baseCtor.prototype, name) ||
+                    Object.create(null)
+            );
+        });
+    });
+}

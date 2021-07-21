@@ -1,14 +1,18 @@
 import * as Bitcore from "bitcore-lib-cash";
 import * as Interface from "./interface";
-import * as Utxo from "./Utxo";
+import { Helper } from "./Helper";
 
 export default class BCH {
-    protected privKey: any;
-    protected data: Interface.URLs;
-    protected address: any;
-    protected _Helper: any;
-    constructor(data: Interface.URLs) {
+    constructor(
+        protected privKey: Bitcore.PrivateKey,
+        protected data: Interface.URLs,
+        protected address: Bitcore.Address,
+        protected _Helper: Helper
+    ) {
+        this.privKey = privKey;
         this.data = data;
+        this.address = address;
+        this._Helper = _Helper;
     }
     get BCH() {
         const self = this;
@@ -62,26 +66,14 @@ export default class BCH {
                 if ("error" in utxos) return utxos;
 
                 const utxosBCH = utxos.filter((v) => !v.slp);
-                const getFeeNeed = self._Helper.getfeeNeedBCH(
-                    utxosBCH,
-                    self.address.toString(),
-                    toAddress,
-                    amount
-                );
-                if (getFee) return getFeeNeed;
                 const balance = utxosBCH.reduce((a, v) => a + v.value, 0);
-                if (balance < amount + getFeeNeed)
-                    return {
-                        error: true,
-                        message: `insufficient balance. You have ${balance} satoshi. please subtract ${getFeeNeed} satoshi as the fee`,
-                    };
 
-                let inputUtxos = [];
+                const inputUtxos = [];
                 for (const utxo of utxosBCH) {
                     inputUtxos.push(Utxo.utxoToUnspentOutput(utxo));
                     if (
-                        inputUtxos.reduce((a, v) => a + v.satoshis, 0) >=
-                        amount + getFeeNeed
+                        inputUtxos.reduce((a, v) => a + v.satoshis, 0) >
+                        amount + 5000
                     )
                         break;
                 }
@@ -91,6 +83,12 @@ export default class BCH {
                     .change(self.address)
                     .feePerByte(1)
                     .sign(self.privKey);
+                if (getFee) return tx.getFee();
+                if (balance < amount + tx.getFee())
+                    return {
+                        error: true,
+                        message: `insufficient balance. You have ${balance.toString()} satoshi. please subtract ${tx.getFee()} satoshi as the fee`,
+                    };
 
                 const txid = await Utxo.broadcastTx(tx);
                 return txid;
@@ -109,31 +107,22 @@ export default class BCH {
 
                 const utxosBCH = utxos.filter((v) => !v.slp);
                 const balance = utxosBCH.reduce((a, v) => a + v.value, 0);
-
-                const getFeeNeed = self._Helper.getfeeNeedBCH(
-                    utxosBCH,
-                    self.address.toString(),
-                    toAddress,
-                    balance
-                );
-                if (getFee) return getFeeNeed;
-                if (balance - getFeeNeed < 546)
+                if (balance < 546)
                     return {
                         error: true,
-                        message: `transaction rejected! amount trying to send is very small`,
+                        message: "amount trying to send is very small",
                     };
 
-                let inputUtxos = [];
+                const inputUtxos = [];
                 for (const utxo of utxosBCH) {
                     inputUtxos.push(Utxo.utxoToUnspentOutput(utxo));
                 }
                 const tx = new Bitcore.Transaction()
                     .from(inputUtxos)
-                    .to(toAddress, balance - getFeeNeed)
-                    .change(self.address)
+                    .change(toAddress)
                     .feePerByte(1)
                     .sign(self.privKey);
-
+                if (getFee) return tx.getFee();
                 const txid = await Utxo.broadcastTx(tx);
                 return txid;
             },

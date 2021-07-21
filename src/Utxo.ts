@@ -12,10 +12,10 @@ function parseUtxo(gutxos: any) {
 
         let slp: any = null;
         if (output.hasSlpToken()) {
-            const gslp: any = output.getSlpToken();
+            const gslp = output.getSlpToken();
             slp = {};
             slp.tokenId = Buffer.from(gslp.getTokenId()).toString("hex");
-            slp.amount = gslp.getAmount();
+            slp.amount = Number(gslp.getAmount());
             slp.isMintBaton = gslp.getIsMintBaton();
 
             const gslpAddressStr = gslp.getAddress();
@@ -52,7 +52,7 @@ function parseUtxo(gutxos: any) {
 
 export class GRPC {
     private client;
-    constructor(url: string, testnet: boolean = false) {
+    constructor(url: string, testnet = false) {
         this.client = new GrpcClient({
             url,
             testnet,
@@ -76,7 +76,7 @@ export class GRPC {
     }
     async broadcastTx(
         tx: Bitcore.Transaction,
-        skipSlpValidityChecks: boolean = false
+        skipSlpValidityChecks = false
     ): Promise<Interface.tx> {
         try {
             const res = await this.client.submitTransaction({
@@ -112,7 +112,7 @@ function restParse(
     for (const utxo of utxos) {
         if (utxo.slp) {
             utxo.slp.address = Bitcore.Address.fromString(
-                bchaddr.toCashAddress(utxo.slp.address)
+                bchaddr.toCashAddress(utxo.slp.address.toString())
             );
         }
         data.push(utxo);
@@ -122,14 +122,14 @@ function restParse(
 export class REST {
     private url: string;
     private network: string;
-    constructor(url: string, testnet: boolean) {
+    constructor(url: string, testnet = false) {
         this.url = url;
         this.network = "mainnet";
         if (testnet) this.network = "testnet";
     }
     async broadcastTx(
         txnHex: Bitcore.Transaction,
-        skipSlpValidityChecks: boolean = false
+        skipSlpValidityChecks = false
     ): Promise<Interface.tx> {
         const tx = txnHex.serialize();
         let gutxos;

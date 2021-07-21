@@ -27,7 +27,10 @@ export default class SIMPLESLP {
 
         if (grpcUrl.endsWith("/")) grpcUrl = grpcUrl.slice(0, -1);
 
-        let client: any = new Utxo.REST(grpcUrl, this.testnet);
+        let client: Utxo.GRPC | Utxo.REST = new Utxo.REST(
+            grpcUrl,
+            this.testnet
+        );
         if (method == "grpc") {
             client = new Utxo.GRPC(grpcUrl, this.testnet);
         }
@@ -57,7 +60,7 @@ export default class SIMPLESLP {
 
     async fromSeed(
         seed: string,
-        derivationPath: string = "m/44'/0'/0'/0/0"
+        derivationPath = "m/44'/0'/0'/0/0"
     ): Promise<Wallet | Interface.Error> {
         const wif = await this._Helper.seedToWIF(
             seed,
@@ -74,7 +77,7 @@ export default class SIMPLESLP {
         return new Wallet(privkey, this.data);
     }
     async create(
-        derivationPath: string = "m/44'/0'/0'/0/0"
+        derivationPath = "m/44'/0'/0'/0/0"
     ): Promise<Interface.Error | Interface.createInterface> {
         const seed = this._Helper.createNew();
         const wif = await this._Helper.seedToWIF(
