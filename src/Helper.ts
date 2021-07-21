@@ -95,25 +95,6 @@ export class Helper {
             BIP39.wordlists.english
         );
     }
-    getfeeNeedBCH(
-        utxosBCH: Interface.Utxo[],
-        address: string,
-        toAddress: string,
-        amount: number
-    ): number {
-        const inputUtxos = [];
-        for (const utxo of utxosBCH) {
-            inputUtxos.push(this.Utxo.utxoToUnspentOutput(utxo));
-            if (inputUtxos.reduce((a, v) => a + v.satoshis, 0) > amount) break;
-        }
-        const tx = new Bitcore.Transaction()
-            .from(inputUtxos)
-            .to(toAddress, amount)
-            .change(address)
-            .feePerByte(1)
-            .getFee();
-        return tx;
-    }
     mintParent(
         inputUtxos: Bitcore.Transaction.UnspentOutput[],
         address: string,

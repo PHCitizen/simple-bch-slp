@@ -4,9 +4,7 @@ import { Helper } from "./Helper";
 import BCH from "./BCH";
 import SLP from "./SLP";
 const QRCode = require("qrcode");
-import "typescript-mixin";
 
-@Mixins.tmixin(BCH, SLP)
 export class Wallet {
     protected wif: string;
     protected privKey: Bitcore.PrivateKey;
@@ -68,3 +66,16 @@ export class Wallet {
     }
 }
 export interface Wallet extends BCH, SLP {}
+applyMixins(Wallet, [BCH, SLP]);
+function applyMixins(derivedCtor: any, constructors: any[]) {
+    constructors.forEach((baseCtor) => {
+        Object.getOwnPropertyNames(baseCtor.prototype).forEach((name) => {
+            Object.defineProperty(
+                derivedCtor.prototype,
+                name,
+                Object.getOwnPropertyDescriptor(baseCtor.prototype, name) ||
+                    Object.create(null)
+            );
+        });
+    });
+}
