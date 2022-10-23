@@ -1,3 +1,5 @@
+# DO NOT USE THIS. THIS REPO CONTAINS BUGS THAT CAN BURN YOUR TOKENS
+
 # Simple BCH SLP
 
 Simple SLP is a package written in nodejs to deal with bitcoin-cash slp and bch transaction
